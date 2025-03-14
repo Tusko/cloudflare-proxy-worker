@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { ContentfulStatusCode } from 'hono/utils/http-status';
 import axios, { AxiosHeaders, AxiosRequestConfig } from 'axios';
 
@@ -17,6 +18,8 @@ type ICacheObject = {
 };
 
 const app = new Hono<ProxyCacheEnv>();
+
+app.use('*', cors());
 
 // Default TTL if not provided (1 hour in seconds)
 const DEFAULT_TTL = 3600;
@@ -82,6 +85,8 @@ app.all('*', async (c) => {
 		}
 	}
 
+	console.log('============raaaaaw', c.req.raw.headers);
+
 	// Prepare headers to forward
 	const headers = new Headers();
 	for (const [key, value] of c.req.raw.headers.entries()) {
@@ -91,9 +96,11 @@ app.all('*', async (c) => {
 		}
 	}
 
+	let requestInit: AxiosRequestConfig = {};
+
 	try {
 		// Forward the request
-		const requestInit: AxiosRequestConfig = {
+		requestInit = {
 			method: c.req.method,
 			headers: {
 				...headers,
@@ -146,6 +153,10 @@ app.all('*', async (c) => {
 			responseHeaders['X-Cache-TTL'] = cacheTtl.toString();
 		}
 
+		responseHeaders['Access-Control-Allow-Origin'] = '*';
+		responseHeaders['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
+		responseHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+
 		return c.json(responseData as Record<string, unknown>, response.status as ContentfulStatusCode, responseHeaders);
 	} catch (error) {
 		console.error(error);
@@ -154,6 +165,8 @@ app.all('*', async (c) => {
 				error: 'Proxy error',
 				message: error instanceof Error ? error.message : 'Unknown error',
 				targetUrl,
+				details: error,
+				requestInit,
 			},
 			500
 		);
