@@ -62,7 +62,30 @@ app.all('*', async (c) => {
 	const targetUrl = c.req.query('url');
 
 	if (!targetUrl) {
-		return c.json({ error: 'No URL provided' }, 400);
+		// Return developer documentation instead of a simple error
+		return c.json(
+			{
+				error: 'No URL provided',
+				usage: {
+					description: 'This is a Cloudflare proxy worker with caching capabilities',
+					queryParameters: {
+						url: 'Required. The target URL to proxy requests to',
+					},
+					cacheHeaders: {
+						'x-cache-name': 'Optional. Name of the cache entry. If provided, responses will be cached',
+						'x-cache-ttl': `Optional. Cache time-to-live in seconds. Default: ${DEFAULT_TTL}. Set to 0 to clear cache`,
+					},
+					features: [
+						'Supports both GET and POST requests',
+						'Forwards headers and request body to target URL',
+						'Caching with customizable TTL',
+						'CORS support for cross-origin requests',
+					],
+					examples: ['?url=https://api.example.com/data', 'POST with header x-cache-name=my-data and x-cache-ttl=600'],
+				},
+			},
+			400
+		);
 	}
 
 	// If cache name is provided and ttl is 0, remove from cache
