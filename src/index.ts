@@ -85,14 +85,13 @@ app.all('*', async (c) => {
 		}
 	}
 
-	console.log('============raaaaaw', c.req.raw.headers);
-
 	// Prepare headers to forward
-	const headers = new Headers();
+	const axiosHeaders: Record<string, string> = {};
+
 	for (const [key, value] of c.req.raw.headers.entries()) {
 		// Skip cache control headers when forwarding
 		if (!key.toLowerCase().startsWith('x-cache-')) {
-			headers.set(key, value);
+			axiosHeaders[key] = value;
 		}
 	}
 
@@ -103,7 +102,9 @@ app.all('*', async (c) => {
 		requestInit = {
 			method: c.req.method,
 			headers: {
-				...headers,
+				...axiosHeaders,
+				Accept: c.req.header('accept') || '*/*',
+				'Content-Type': c.req.header('content-type') || 'application/json',
 			},
 			url: targetUrl,
 		};
